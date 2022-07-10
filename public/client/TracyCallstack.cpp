@@ -249,6 +249,55 @@ void InitCallstack()
 #endif
 }
 
+TRACY_API void NotifyModuleLoad( void* mod_ )
+{
+	if ( !ProfilerAvailable() )
+		return;
+#ifdef TRACY_DBGHELP_LOCK
+    DBGHELP_LOCK;
+#endif
+
+	HMODULE mod = (HMODULE)mod_;
+	MODULEINFO info;
+	if ( GetModuleInformation( GetCurrentProcess(), mod, &info, sizeof( info ) ) != 0 )
+	{
+		const auto base = uint64_t( info.lpBaseOfDll );
+		for ( const auto& m : *s_modCache )
+			if ( m.start == base )
+			{
+			#ifdef TRACY_DBGHELP_LOCK
+				DBGHELP_UNLOCK;
+			#endif
+				return;
+			}
+		char name[1024];
+		const auto res = GetModuleFileNameA( mod, name, 1021 );
+		if ( res > 0 )
+		{
+			auto ptr = name + res;
+			while ( ptr > name && *ptr != '\\' && *ptr != '/' )
+				ptr--;
+			if ( ptr > name )
+				ptr++;
+			const auto namelen = name + res - ptr;
+			auto cache = s_modCache->push_next();
+			cache->start = base;
+			cache->end = base + info.SizeOfImage;
+			cache->name = (char *)tracy_malloc( namelen + 3 );
+			cache->name[0] = '[';
+			memcpy( cache->name + 1, ptr, namelen );
+			cache->name[namelen + 1] = ']';
+			cache->name[namelen + 2] = '\0';
+			LoadLibraryA( name ); // artificially increment "ref"-count
+			SymLoadModule( GetCurrentProcess(), nullptr, name, nullptr, base, 0 );
+		}
+	}
+
+#ifdef TRACY_DBGHELP_LOCK
+    DBGHELP_UNLOCK;
+#endif
+}
+
 void EndCallstack()
 {
 }

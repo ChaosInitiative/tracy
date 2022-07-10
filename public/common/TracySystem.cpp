@@ -128,8 +128,13 @@ void ThreadNameMsvcMagic( const THREADNAME_INFO& info )
 }
 #endif
 
+TRACY_API bool ProfilerAvailable();
 TRACY_API void SetThreadName( const char* name )
 {
+#ifdef TRACY_ON_DEMAND
+	if (!ProfilerAvailable()) return;
+#endif
+
 #if defined _WIN32
 #  ifdef TRACY_UWP
     static auto _SetThreadDescription = &::SetThreadDescription;

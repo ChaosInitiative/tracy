@@ -260,6 +260,9 @@ public:
 
     static tracy_force_inline void SendFrameMark( const char* name )
     {
+#ifdef TRACY_ON_DEMAND
+        if( !ProfilerAvailable() ) return;
+#endif
         if( !name ) GetProfiler().m_frameCount.fetch_add( 1, std::memory_order_relaxed );
 #ifdef TRACY_ON_DEMAND
         if( !GetProfiler().IsConnected() ) return;
@@ -273,6 +276,9 @@ public:
 
     static tracy_force_inline void SendFrameMark( const char* name, QueueType type )
     {
+#ifdef TRACY_ON_DEMAND
+        if( !ProfilerAvailable() ) return;
+#endif
         assert( type == QueueType::FrameMarkMsgStart || type == QueueType::FrameMarkMsgEnd );
 #ifdef TRACY_ON_DEMAND
         if( !GetProfiler().IsConnected() ) return;
@@ -287,6 +293,9 @@ public:
     static tracy_force_inline void SendFrameImage( const void* image, uint16_t w, uint16_t h, uint8_t offset, bool flip )
     {
 #ifndef TRACY_NO_FRAME_IMAGE
+#ifdef TRACY_ON_DEMAND
+        if( !ProfilerAvailable() ) return;
+#endif
         auto& profiler = GetProfiler();
         assert( profiler.m_frameCount.load( std::memory_order_relaxed ) < std::numeric_limits<uint32_t>::max() );
 #  ifdef TRACY_ON_DEMAND
@@ -311,7 +320,7 @@ public:
     static tracy_force_inline void PlotData( const char* name, int64_t val )
     {
 #ifdef TRACY_ON_DEMAND
-        if( !GetProfiler().IsConnected() ) return;
+        if( !ProfilerAvailable() || !GetProfiler().IsConnected() ) return;
 #endif
         TracyLfqPrepare( QueueType::PlotDataInt );
         MemWrite( &item->plotDataInt.name, (uint64_t)name );
@@ -323,7 +332,7 @@ public:
     static tracy_force_inline void PlotData( const char* name, float val )
     {
 #ifdef TRACY_ON_DEMAND
-        if( !GetProfiler().IsConnected() ) return;
+        if( !ProfilerAvailable() || !GetProfiler().IsConnected() ) return;
 #endif
         TracyLfqPrepare( QueueType::PlotDataFloat );
         MemWrite( &item->plotDataFloat.name, (uint64_t)name );
@@ -335,7 +344,7 @@ public:
     static tracy_force_inline void PlotData( const char* name, double val )
     {
 #ifdef TRACY_ON_DEMAND
-        if( !GetProfiler().IsConnected() ) return;
+        if( !ProfilerAvailable() || !GetProfiler().IsConnected() ) return;
 #endif
         TracyLfqPrepare( QueueType::PlotDataDouble );
         MemWrite( &item->plotDataDouble.name, (uint64_t)name );
@@ -346,6 +355,9 @@ public:
 
     static tracy_force_inline void ConfigurePlot( const char* name, PlotFormatType type, bool step, bool fill, uint32_t color )
     {
+#ifdef TRACY_ON_DEMAND
+        if( !ProfilerAvailable() ) return;
+#endif
         TracyLfqPrepare( QueueType::PlotConfig );
         MemWrite( &item->plotConfig.name, (uint64_t)name );
         MemWrite( &item->plotConfig.type, (uint8_t)type );
@@ -364,7 +376,7 @@ public:
     {
         assert( size < std::numeric_limits<uint16_t>::max() );
 #ifdef TRACY_ON_DEMAND
-        if( !GetProfiler().IsConnected() ) return;
+        if( !ProfilerAvailable() || !GetProfiler().IsConnected() ) return;
 #endif
         if( callstack != 0 )
         {
@@ -384,7 +396,7 @@ public:
     static tracy_force_inline void Message( const char* txt, int callstack )
     {
 #ifdef TRACY_ON_DEMAND
-        if( !GetProfiler().IsConnected() ) return;
+        if( !ProfilerAvailable() || !GetProfiler().IsConnected() ) return;
 #endif
         if( callstack != 0 )
         {
@@ -401,7 +413,7 @@ public:
     {
         assert( size < std::numeric_limits<uint16_t>::max() );
 #ifdef TRACY_ON_DEMAND
-        if( !GetProfiler().IsConnected() ) return;
+        if( !ProfilerAvailable() || !GetProfiler().IsConnected() ) return;
 #endif
         if( callstack != 0 )
         {
@@ -414,9 +426,9 @@ public:
         TracyQueuePrepare( callstack == 0 ? QueueType::MessageColor : QueueType::MessageColorCallstack );
         MemWrite( &item->messageColorFat.time, GetTime() );
         MemWrite( &item->messageColorFat.text, (uint64_t)ptr );
-        MemWrite( &item->messageColorFat.r, uint8_t( ( color       ) & 0xFF ) );
+        MemWrite( &item->messageColorFat.r, uint8_t( ( color >> 16 ) & 0xFF ) ); // r and b are swapped in profiler :(
         MemWrite( &item->messageColorFat.g, uint8_t( ( color >> 8  ) & 0xFF ) );
-        MemWrite( &item->messageColorFat.b, uint8_t( ( color >> 16 ) & 0xFF ) );
+        MemWrite( &item->messageColorFat.b, uint8_t( ( color       ) & 0xFF ) );
         MemWrite( &item->messageColorFat.size, (uint16_t)size );
         TracyQueueCommit( messageColorFatThread );
     }
@@ -424,7 +436,7 @@ public:
     static tracy_force_inline void MessageColor( const char* txt, uint32_t color, int callstack )
     {
 #ifdef TRACY_ON_DEMAND
-        if( !GetProfiler().IsConnected() ) return;
+        if( !ProfilerAvailable() || !GetProfiler().IsConnected() ) return;
 #endif
         if( callstack != 0 )
         {
@@ -434,14 +446,17 @@ public:
         TracyQueuePrepare( callstack == 0 ? QueueType::MessageLiteralColor : QueueType::MessageLiteralColorCallstack );
         MemWrite( &item->messageColorLiteral.time, GetTime() );
         MemWrite( &item->messageColorLiteral.text, (uint64_t)txt );
-        MemWrite( &item->messageColorLiteral.r, uint8_t( ( color       ) & 0xFF ) );
+        MemWrite( &item->messageColorLiteral.r, uint8_t( ( color >> 16 ) & 0xFF ) ); // r and b are swapped in profiler :(
         MemWrite( &item->messageColorLiteral.g, uint8_t( ( color >> 8  ) & 0xFF ) );
-        MemWrite( &item->messageColorLiteral.b, uint8_t( ( color >> 16 ) & 0xFF ) );
+        MemWrite( &item->messageColorLiteral.b, uint8_t( ( color       ) & 0xFF ) );
         TracyQueueCommit( messageColorLiteralThread );
     }
 
     static tracy_force_inline void MessageAppInfo( const char* txt, size_t size )
     {
+#ifdef TRACY_ON_DEMAND
+        if( !ProfilerAvailable() ) return;
+#endif
         assert( size < std::numeric_limits<uint16_t>::max() );
         auto ptr = (char*)tracy_malloc( size );
         memcpy( ptr, txt, size );

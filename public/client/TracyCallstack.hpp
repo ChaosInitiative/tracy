@@ -77,6 +77,7 @@ extern "C"
     typedef unsigned long (__stdcall *___tracy_t_RtlWalkFrameChain)( void**, unsigned long, unsigned long );
     TRACY_API extern ___tracy_t_RtlWalkFrameChain ___tracy_RtlWalkFrameChain;
 }
+TRACY_API void NotifyModuleLoad( void* mod );
 
 static tracy_force_inline void* Callstack( int depth )
 {

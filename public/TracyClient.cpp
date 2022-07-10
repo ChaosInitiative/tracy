@@ -17,6 +17,15 @@
 
 #ifdef _MSC_VER
 #  pragma warning(push, 0)
+#define TRACY_DBGHELP_LOCK DbgHelp
+extern "C"
+{
+static HANDLE dbgHelpLock;
+
+void DbgHelpInit() { dbgHelpLock = CreateMutex(nullptr, FALSE, nullptr); }
+void DbgHelpLock() { WaitForSingleObject(dbgHelpLock, INFINITE); }
+void DbgHelpUnlock() { ReleaseMutex(dbgHelpLock); }
+}
 #endif
 
 #include "common/tracy_lz4.cpp"
@@ -54,4 +63,46 @@
 #  pragma warning(pop)
 #endif
 
+#if PLATFORM_POSIX
+#define CONSTRUCT_EARLY			__attribute__((init_priority(111)))
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+#else
+#define CONSTRUCT_EARLY
+#endif
+
+#pragma warning( disable:4075 ) // warning C4075: initializers put in unrecognized initialization area
+#pragma init_seg( ".CRT$XCB" )
+static struct TracyInitializer
+{
+	TracyInitializer()
+	{
+#ifdef WIN32
+		bool bTrack = !!strstr( GetCommandLineA(), "-tracy" );
+#else
+		bool bTrack = false;
+		int fd = open( "/proc/self/cmdline", O_RDONLY );
+		if ( fd > 0 )
+		{
+			char data[4096];
+			auto r = read( fd, data, 4096 );
+			auto start = data;
+			auto end = start + r;
+			for ( auto p = start; p < end; )
+			{
+				if ( strstr( p, "-tracy" ) )
+				{
+					bTrack = true;
+					break;
+				}
+				while ( *p++ );
+			}
+			close( fd );
+		}
+#endif
+		if ( bTrack )
+			tracy::StartupProfiler();
+	}
+} s_init CONSTRUCT_EARLY;
 #endif
