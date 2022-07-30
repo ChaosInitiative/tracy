@@ -129,59 +129,14 @@ void ThreadNameMsvcMagic( const THREADNAME_INFO& info )
 #endif
 
 TRACY_API bool ProfilerAvailable();
-TRACY_API void SetThreadName( const char* name )
+TRACY_API void SetThreadName( const char* name, uint32_t threadID )
 {
 #ifdef TRACY_ON_DEMAND
 	if (!ProfilerAvailable()) return;
 #endif
 
-#if defined _WIN32
-#  ifdef TRACY_UWP
-    static auto _SetThreadDescription = &::SetThreadDescription;
-#  else
-    static auto _SetThreadDescription = (t_SetThreadDescription)GetProcAddress( GetModuleHandleA( "kernel32.dll" ), "SetThreadDescription" );
-#  endif
-    if( _SetThreadDescription )
-    {
-        wchar_t buf[256];
-        mbstowcs( buf, name, 256 );
-        _SetThreadDescription( GetCurrentThread(), buf );
-    }
-    else
-    {
-#  if defined _MSC_VER
-        THREADNAME_INFO info;
-        info.dwType = 0x1000;
-        info.szName = name;
-        info.dwThreadID = GetCurrentThreadId();
-        info.dwFlags = 0;
-        ThreadNameMsvcMagic( info );
-#  endif
-    }
-#elif defined _GNU_SOURCE && !defined __EMSCRIPTEN__
-    {
-        const auto sz = strlen( name );
-        if( sz <= 15 )
-        {
-#if defined __APPLE__
-            pthread_setname_np( name );
-#else
-            pthread_setname_np( pthread_self(), name );
-#endif
-        }
-        else
-        {
-            char buf[16];
-            memcpy( buf, name, 15 );
-            buf[15] = '\0';
-#if defined __APPLE__
-            pthread_setname_np( buf );
-#else
-            pthread_setname_np( pthread_self(), buf );
-#endif
-        }
-    }
-#endif
+	// OS SUPPORT REMOVED -- Handled by tier0 threadtools.cpp
+
 #ifdef TRACY_ENABLE
     {
         const auto sz = strlen( name );
@@ -189,7 +144,7 @@ TRACY_API void SetThreadName( const char* name )
         memcpy( buf, name, sz );
         buf[sz] = '\0';
         auto data = (ThreadNameData*)tracy_malloc_fast( sizeof( ThreadNameData ) );
-        data->id = detail::GetThreadHandleImpl();
+        data->id = threadID;
         data->name = buf;
         data->next = GetThreadNameData().load( std::memory_order_relaxed );
         while( !GetThreadNameData().compare_exchange_weak( data->next, data, std::memory_order_release, std::memory_order_relaxed ) ) {}
