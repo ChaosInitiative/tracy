@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
     container:
-      image: scell555/chaos-cas-steamrt:latest
+      image: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
     steps:
       - uses: actions/checkout@v2
       - name: Install libraries
