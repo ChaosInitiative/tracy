@@ -13,6 +13,8 @@ jobs:
       fail-fast: false
     container:
       image: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
+    env:
+      LEGACY: "1"
     steps:
       - uses: actions/checkout@v2
       - name: Install libraries
