@@ -12,7 +12,10 @@ jobs:
     strategy:
       fail-fast: false
     container:
-      image: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:latest
+      image: registry.licensees.chaosinitiative.com/chaos-initiative/ci/chaos-cas2-steamrt:latest
+      credentials:
+        username: token
+        password: ${{ secrets.DOCKER_CONTAINER_REGISTRY_TOKEN }}
     env:
       LEGACY: "1"
     steps:
