@@ -18,10 +18,13 @@ jobs:
         password: ${{ secrets.DOCKER_CONTAINER_REGISTRY_TOKEN }}
     env:
       LEGACY: "1"
+      TRACY_NO_LTO: "1"
+      CC: "clang"
+      CXX: "clang++"
     steps:
       - uses: actions/checkout@v2
       - name: Install libraries
-        run: sudo apt-get update && sudo apt-get -y install libdbus-1-dev libcapstone-dev libtbb-dev libdebuginfod-dev libxkbcommon-dev libegl-dev libwayland-dev
+        run: sudo apt-get update && sudo apt-get -y install libcapstone-dev libglfw3-dev
       - name: Profiler GUI
         run: make -j`nproc` -C profiler/build/unix debug release
       - name: Update utility
