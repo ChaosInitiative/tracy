@@ -72,6 +72,7 @@ void DbgHelpUnlock() { ReleaseMutex(dbgHelpLock); }
 #define CONSTRUCT_EARLY
 #endif
 
+#ifdef TRACY_DELAYED_INIT
 #pragma warning( disable:4075 ) // warning C4075: initializers put in unrecognized initialization area
 #pragma init_seg( ".CRT$XCB" )
 static struct TracyInitializer
@@ -105,4 +106,6 @@ static struct TracyInitializer
 			tracy::StartupProfiler();
 	}
 } s_init CONSTRUCT_EARLY;
+#endif
+
 #endif
