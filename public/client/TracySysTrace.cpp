@@ -1243,7 +1243,7 @@ void SysTraceWorker( void* ptr )
 #if defined TRACY_HW_TIMER && ( defined __i386 || defined _M_IX86 || defined __x86_64__ || defined _M_X64 )
                         t0 = ring.ConvertTimeToTsc( t0 );
 #endif
-                        QueueType type;
+                        QueueType type {};
                         switch( id )
                         {
                         case EventCpuCycles:
